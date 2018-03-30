@@ -53,6 +53,14 @@ def load_digits_from_img(img_file):
     target_set = []
     start = 1
 
+    # # BEGIN: my modification
+    # # cv2.imread could read the file with format bmp,jpg,png,tiff and so on
+    # # more information could be found here https://blog.csdn.net/sunny2038/article/details/9057415
+    # cv2.namedWindow("Image")    # create a new window
+    # cv2.imshow("Image", img)    # show the image
+    # cv2.waitKey (0)             # without this line it only shows for a short instance
+    # # END
+
     # processing the input img to get rid of the noise and make the pattern more clear
     img_gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     # information about cv2.cvtColor https://blog.csdn.net/jningwei/article/details/77725559
@@ -77,6 +85,13 @@ def load_digits_from_img(img_file):
 
     #sort rectangles accoring to x,y pos so that we can label them
     rectangles.sort(key=lambda x:get_contour_precedence(x, img.shape[1]))
+    # >>> student_tuples = [
+    # ...     ('john', 'A', 15),
+    # ...     ('jane', 'B', 12),
+    # ...     ('dave', 'B', 10),
+    # ... ]
+    # >>> sorted(student_tuples, key=lambda student: student[2])   # sort by age
+    # [('dave', 'B', 10), ('jane', 'B', 12), ('john', 'A', 15)]
 
     for i,r in enumerate(rectangles):
         # https://blog.csdn.net/hjxu2016/article/details/77833984
@@ -153,6 +168,7 @@ def rect_from_contoursHierarchy(contours,hierarchy):
 # get contour levels
 def get_contour_precedence(contour, cols):
     return contour[1] * cols + contour[0]  #row-wise ordering
+    # this makes the samples enumerated from left top to right bottom in the values of positionx*positiony
 
 # turn the pixels into hog
 def pixels_to_hog(img_array):
