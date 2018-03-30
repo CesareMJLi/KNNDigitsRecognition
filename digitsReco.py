@@ -1,6 +1,6 @@
 
 """
-Created on Mar 29 2018 
+Created on Mar 30 2018 
 
 @author: Mingju Li
 """
@@ -30,7 +30,7 @@ from sklearn.utils import shuffle
 
 #----------------------Constants delaration---------------------------
 
-INPUT_IMAGE = "input_image.png"
+INPUT_IMAGE = "input_image.jpg"
 INPUT_IMAGE_AFTERLOAD = "input_image_overlay.png"
 
 OUTPUT_IMAGE = "output_image.png"
@@ -58,7 +58,8 @@ def load_digits_from_img(img_file):
     # information about cv2.cvtColor https://blog.csdn.net/jningwei/article/details/77725559
     # this function could convert the color of original image into a new color space
     plt.imshow(img_gray)
-    kernel = np.ones((5,5),dtype=int)
+    # kernel = np.ones((5,5),dtype=int)
+    kernel = np.ones((5,5),np.uint8)
     #return a 5*5 matrix filled with 1
     ret, thresh = cv2.threshold(img_gray,127,255,0)
     thresh = cv2.erode(thresh,kernel,iterations = 1)
@@ -74,6 +75,9 @@ def load_digits_from_img(img_file):
     # https://blog.csdn.net/sunny2038/article/details/12889059
     # https://blog.csdn.net/jfuck/article/details/9620889 
 
+    #sort rectangles accoring to x,y pos so that we can label them
+    rectangles.sort(key=lambda x:get_contour_precedence(x, img.shape[1]))
+
     for i,r in enumerate(rectangles):
         # https://blog.csdn.net/hjxu2016/article/details/77833984
         # >>>seasons = ['Spring', 'Summer', 'Fall', 'Winter']
@@ -85,7 +89,7 @@ def load_digits_from_img(img_file):
 
         # obetain a digit matrix from a image
         img_digit = img_gray[y:y+h,x:x+w]
-        img_digit = (255-img_digit)
+        # img_digit = (255-img_digit)
         img_digit = imresize(img_digit,(IMG_WIDTH, IMG_HEIGHT))
         # from our preset width and height we derive the size of 28*28 matrix
 
@@ -139,19 +143,23 @@ def rect_from_contoursHierarchy(contours,hierarchy):
         # this help to avoid mark some small pattern and decrease the noise
         #  https://docs.opencv.org/trunk/d9/d8b/tutorial_py_contours_hierarchy.html
 
-        if ((w*h)>250) and (10 <= w <= 200) and (10 <= h <= 200) and hr[3] == most_common_heirarchy: 
+        if ((w*h)>250) and (10 <= w <= 300) and (20 <= h <= 300) and hr[3] == most_common_heirarchy: 
             # hr[3] is the parent contours
             # here I think the most common heirarchy should be -1
             final_boundary.append(r)    
 
     return final_boundary
 
-# turen the pixels into hog
+# get contour levels
+def get_contour_precedence(contour, cols):
+    return contour[1] * cols + contour[0]  #row-wise ordering
+
+# turn the pixels into hog
 def pixels_to_hog(img_array):
     # the input a an array of 100 matrix
     hog_featuresData = []
-    for i in img_array:
-        fd = hog(i, 
+    for img in img_array:
+        fd = hog(img, 
                  orientations=10, 
                  pixels_per_cell=(5,5),
                  cells_per_block=(1,1), 
@@ -165,14 +173,19 @@ def KNN_MachineLearning(img_file, model):
     print("START TO PROCESSING INPUT IMAGE:\n")
     img = cv2.imread(img_file)
 
-    blank_image = np.zeros((img.shape[0],img.shape[1],3), dtype=int)
+    blank_image = np.zeros((img.shape[0],img.shape[1],3), np.int32)
+    # blank_image = np.zeros((img.shape[0],img.shape[1],3),dtype=int)
+    # the above line is my original solution
+    # while it cause a problem in the following output there is an uncompatible error
+    # switch to another data type -- np.int32 could solve this problem
     blank_image.fill(255)
     # 0 is color black and 255 is color white
     # here we create a new image of the input size
 
     img_gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     plt.imshow(img_gray)
-    kernel = np.ones((5,5),dtype=int)
+    # kernel = np.ones((5,5),dtype=int)
+    kernel = np.ones((5,5),np.uint8)
 
     # pre-processing the input images
     ret,thresh = cv2.threshold(img_gray,127,255,0)   
@@ -199,16 +212,17 @@ def KNN_MachineLearning(img_file, model):
 
         # for each rectangle area we obtained, we use our trained model to do the prediction
         pred = model.predict(hog_img_data)
+        print("Now the predict value is %i" %pred[0])
         
         # put the result into the orginal image
         cv2.putText(img, str(int(pred[0])), (x,y),cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 3)
         
         # put the result into the new blank image
-        # cv2.putText(blank_image, str(int(pred[0])), (x,y),cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 5)
+        cv2.putText(blank_image, str(int(pred[0])), (x,y),cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 5)
 
     plt.imshow(img)
     cv2.imwrite(INPUT_IMAGE_AFTERLOAD,img) 
-    # cv2.imwrite(OUTPUT_IMAGE,blank_image) 
+    cv2.imwrite(OUTPUT_IMAGE,blank_image) 
     cv2.destroyAllWindows()
 
 
@@ -244,7 +258,9 @@ digits, labels = load_digits_from_img(TRAIN_USER_IMG)
 print('The digits of the training model is ',digits.shape)
 print('The labels of the training model is ',labels.shape)
 
-digits, labels = shuffle(digits, labels, random_state=256)
+# print(labels)
+digits, labels = shuffle(digits, labels, random_state=12)
+
 # >>> arr = np.arange(10)
 # >>> np.random.shuffle(arr)
 # >>> arr
@@ -253,7 +269,7 @@ digits, labels = shuffle(digits, labels, random_state=256)
 
 train_digits_data = pixels_to_hog(digits)
 
-x_train, x_test, y_train, y_test = train_test_split(train_digits_data, labels, test_size=0.33, random_state=42)
+x_train, x_test, y_train, y_test = train_test_split(train_digits_data, labels, test_size=0.33, random_state=233)
 
 model = KNN_MODEL(k = 3)
 model.train(x_train, y_train)
@@ -262,7 +278,9 @@ print('The Accuracy of this model is : ',accuracy_score(y_test, preds))
 
 #----------------------Testing---------------------------
 
-model = KNN_MODEL(k = 5)
+model = KNN_MODEL(k = 4)
 model.train(train_digits_data, labels)
 # here we use all of our training data to train the model to get the best accuracy
 KNN_MachineLearning(INPUT_IMAGE, model)
+
+#------------------------------------------------------------------------------
