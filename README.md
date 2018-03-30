@@ -13,9 +13,11 @@ This class has two attributes, KNN parameter **k** and the KNN model **model**. 
 
 Besides this class, we have one function to do the digit recognitions.
 
-It is **input_processor(img_file, model)** given a input image **input_image.png**, it could generate two pictures.
+The training stage would use one training model **train_image.jpg** to do the training, and it would generate a new picture **train_image_overlay.png** as the result.
 
-One picture is **overlay.png** with the original image but with rectangle with digits on it.
+It is **KNN_MachineLearning(INPUT_IMAGE, model)** given a input image **input_image.jpg**, it could generate two pictures.
+
+One picture is **input_image_overlay.png** with the original image but with rectangle with digits on it.
 
 Another picture is **output.png** with only the digits without the numbers.
 
